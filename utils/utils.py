@@ -23,3 +23,10 @@ class AvgMeter(object):
 
     def show(self):
         return torch.mean(torch.stack(self.losses[np.maximum(len(self.losses)-self.num, 0):]))
+    
+def readlines(filename):
+    """Read all the lines in a text file and return as a list
+    """
+    with open(filename, 'r') as f:
+        lines = f.read().splitlines()
+    return lines
