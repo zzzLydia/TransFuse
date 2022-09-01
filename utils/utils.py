@@ -30,3 +30,10 @@ def readlines(filename):
     with open(filename, 'r') as f:
         lines = f.read().splitlines()
     return lines
+
+def pil_loader(path):
+# open path as file to avoid ResourceWarning
+# (https://github.com/python-pillow/Pillow/issues/835)
+    with open(path, 'rb') as f:
+        with Image.open(f) as img:
+            return img
