@@ -7,6 +7,50 @@ import numpy as np
 import matplotlib.pyplot as plt
 import albumentations as A
 import cv2
+from utils import readlines, pil_loader
+
+
+class CHAOS(data.Dataset):
+    def __init__(self, data_path, istrain):
+        self.datapath = data_path
+        self.istrain = istrain
+        self.loader = pil_loader
+       # fpath = os.path.join(os.path.dirname(__file__), "splits", self.opt.split, "{}_files.txt")
+        
+    def __getitem__(self, index):
+        if self.istrain==True:
+            txtname = train_split
+            
+            txtpath = os.path.join(os.path.dirname(__file__), "data", txt_name, ".txt")
+            
+            filenames = readline(path)
+            line = filenames[index]
+            
+            inputs = {}
+            inputs{"InPhase"} = self.get_color(self.datapath, 'in', line)
+            inputs{"OutPhase"} = self.get_color(self.datapath, 'out', line)
+            inputs{"gt"} = self.get_color(self.datapath, 'gt', line)
+            
+            
+            
+        else:
+            txtname=test_split
+            txtpath=os.path.join(os.path.dirname(__file__), "data", txt_name, ".txt")
+            filename=readline(txt_name)
+            inputs={}
+            
+            
+        return inputs
+    def __len__(self, ):
+        
+        
+        
+        
+    def get_color(self, data_path, img_type, img_name, do_flip):
+        color = self.loader(os.path.join(data_path, img_type, img_name))
+#         if do_flip:
+#             color = color.transpose(pil.FLIP_LEFT_RIGHT)
+        return color
 
 
 class SkinDataset(data.Dataset):
