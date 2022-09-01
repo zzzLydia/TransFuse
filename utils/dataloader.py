@@ -15,33 +15,31 @@ class CHAOS(data.Dataset):
         self.datapath = data_path
         self.istrain = istrain
         self.loader = pil_loader
-       # fpath = os.path.join(os.path.dirname(__file__), "splits", self.opt.split, "{}_files.txt")
+        
+        if self.istrain==True:
+            self.txtname = train_split
+        else:
+            self.txtname = test_split
+       
+        self.txtpath = os.path.join(os.path.dirname(__file__), "data", self.txt_name+'.txt')
+        self.filenames = readline(self.txtpath)
+
         
     def __getitem__(self, index):
-        if self.istrain==True:
-            txtname = train_split
-            
-            txtpath = os.path.join(os.path.dirname(__file__), "data", txt_name, ".txt")
-            
-            filenames = readline(path)
-            line = filenames[index]
-            
-            inputs = {}
-            inputs{"InPhase"} = self.get_color(self.datapath, 'in', line)
-            inputs{"OutPhase"} = self.get_color(self.datapath, 'out', line)
-            inputs{"gt"} = self.get_color(self.datapath, 'gt', line)
-            
-            
-            
-        else:
-            txtname=test_split
-            txtpath=os.path.join(os.path.dirname(__file__), "data", txt_name, ".txt")
-            filename=readline(txt_name)
-            inputs={}
-            
-            
+        
+        
+        line = self.filenames[index]
+
+        inputs = {}
+        inputs{"InPhase"} = self.get_color(self.datapath, 'in', line)
+        inputs{"OutPhase"} = self.get_color(self.datapath, 'out', line)
+        inputs{"gt"} = self.get_color(self.datapath, 'gt', line)
+                        
         return inputs
-    def __len__(self, ):
+    
+    
+    def __len__(self):
+        return len(self.filenames)
         
         
         
