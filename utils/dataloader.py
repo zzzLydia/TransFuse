@@ -27,6 +27,10 @@ class CHAOS(data.Dataset):
         
     def __getitem__(self, index):
         
+        do_flip_left_right = self.istrain=='istrain' and random.random() > 0.5
+        
+        if use_filp_top_bottom:
+            do_flip_top_bottom = self.istrain=='istrain' and random.random() > 0.5
         
         line = self.filenames[index]
 
@@ -46,8 +50,11 @@ class CHAOS(data.Dataset):
         
     def get_color(self, data_path, img_type, img_name, do_flip):
         color = self.loader(os.path.join(data_path, img_type, img_name))
-#         if do_flip:
-#             color = color.transpose(pil.FLIP_LEFT_RIGHT)
+        if do_flip_left_right:
+            color = color.transpose(pil.FLIP_LEFT_RIGHT)
+            
+        if do_flip_top_bottom:
+            color = color.transpose(pil.FLIP_TOP_BOTTOM)
         return color
 
 
@@ -78,6 +85,8 @@ class SkinDataset(data.Dataset):
         )
 
     def __getitem__(self, index):
+        
+
         
         image = self.images[index]
         gt = self.gts[index]
