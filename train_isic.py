@@ -88,6 +88,7 @@ def train(train_loader, model, optimizer, epoch, best_loss, device):
         else:
             output1_InPhase, , =model(InPhase, OutPhase)
             output1_OutPhase, , =model(OutPhase, InPhase)     
+        #loss function
             
         # ---- forward ----
         lateral_map_4, lateral_map_3, lateral_map_2 = model(images)
