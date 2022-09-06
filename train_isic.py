@@ -3,14 +3,14 @@ from torch.autograd import Variable
 import argparse
 from datetime import datetime
 from lib.TransFuse import TransFuse_S, TransFuse_L, TransFuse_L_384
-from utils.dataloader import get_loader, test_dataset
+from utils.dataloader import get_loader, test_dataset, CHAOS
 from utils.utils import AvgMeter
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 from test_isic import mean_dice_np, mean_iou_np
 import os
-
+from torch.utils.data import DataLoader
 
 def structure_loss(pred, mask):
     weit = 1 + 5*torch.abs(F.avg_pool2d(mask, kernel_size=31, stride=1, padding=15) - mask)
@@ -24,16 +24,71 @@ def structure_loss(pred, mask):
     return (wbce + wiou).mean()
 
 
-def train(train_loader, model, optimizer, epoch, best_loss):
+class computeDiceOneHot(nn.Module):
+    def __init__(self):
+        super(computeDiceOneHot, self).__init__()
+
+    def dice(self, input, target):
+        inter = (input * target).float().sum()
+        sum = input.sum() + target.sum()
+        if (sum == 0).all():
+            return (2 * inter + 1e-8) / (sum + 1e-8)
+
+        return 2 * (input * target).float().sum() / (input.sum() + target.sum())
+
+    def inter(self, input, target):
+        return (input * target).float().sum()
+
+    def sum(self, input, target):
+        return input.sum() + target.sum()
+
+    def forward(self, pred, GT):
+        # GT is 4x320x320 of 0 and 1
+        # pred is converted to 0 and 1
+        batchsize = GT.size(0)
+        DiceN = to_var(torch.zeros(batchsize, 2))
+        DiceB = to_var(torch.zeros(batchsize, 2))
+        DiceW = to_var(torch.zeros(batchsize, 2))
+        DiceT = to_var(torch.zeros(batchsize, 2))
+        DiceZ = to_var(torch.zeros(batchsize, 2))
+
+        for i in range(batchsize):
+            DiceN[i, 0] = self.inter(pred[i, 0], GT[i, 0])
+            DiceB[i, 0] = self.inter(pred[i, 1], GT[i, 1])
+            DiceW[i, 0] = self.inter(pred[i, 2], GT[i, 2])
+            DiceT[i, 0] = self.inter(pred[i, 3], GT[i, 3])
+            DiceZ[i, 0] = self.inter(pred[i, 4], GT[i, 4])
+
+            DiceN[i, 1] = self.sum(pred[i, 0], GT[i, 0])
+            DiceB[i, 1] = self.sum(pred[i, 1], GT[i, 1])
+            DiceW[i, 1] = self.sum(pred[i, 2], GT[i, 2])
+            DiceT[i, 1] = self.sum(pred[i, 3], GT[i, 3])
+            DiceZ[i, 1] = self.sum(pred[i, 4], GT[i, 4])
+
+        return DiceN, DiceB , DiceW, DiceT, DiceZ
+
+
+
+
+
+def train(train_loader, model, optimizer, epoch, best_loss, device):
+    
     model.train()
     loss_record2, loss_record3, loss_record4 = AvgMeter(), AvgMeter(), AvgMeter()
     accum = 0
+
     for i, pack in enumerate(train_loader, start=1):
         # ---- data prepare ----
-        images, gts = pack
-        images = Variable(images).cuda()
-        gts = Variable(gts).cuda()
-
+        InPhase, OutPhase, gt = pack
+#         images = Variable(images).cuda()
+#         gts = Variable(gts).cuda()
+        if opt.same_input==True:
+            output1_InPhase, , =model(InPhase, InPhase)
+            output1_OutPhase, , =model(OutPhase, OutPhase)        
+        else:
+            output1_InPhase, , =model(InPhase, OutPhase)
+            output1_OutPhase, , =model(OutPhase, InPhase)     
+            
         # ---- forward ----
         lateral_map_4, lateral_map_3, lateral_map_2 = model(images)
 
@@ -122,7 +177,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--epoch', type=int, default=25, help='epoch number')
     parser.add_argument('--lr', type=float, default=7e-5, help='learning rate')
-    parser.add_argument('--batchsize', type=int, default=16, help='training batch size')
+    parser.add_argument('--batch_size', type=int, default=16, help='training batch size')
+    parser.add_argument('--num_workers', type=int, default=4, help='number of workers')
     parser.add_argument('--grad_norm', type=float, default=2.0, help='gradient clipping norm')
     parser.add_argument('--train_path', type=str,
                         default='data/', help='path to train dataset')
@@ -131,6 +187,8 @@ if __name__ == '__main__':
     parser.add_argument('--train_save', type=str, default='TransFuse_S')
     parser.add_argument('--beta1', type=float, default=0.5, help='beta1 of adam optimizer')
     parser.add_argument('--beta2', type=float, default=0.999, help='beta2 of adam optimizer')
+    parser.add_argument('--device', type=str, default="cuda:1", help='gpu name')
+    parser.add_argument('--same_input', type=bool, default="True", help='whether to use same input for Tranfuse')
 
     opt = parser.parse_args()
 
@@ -141,12 +199,27 @@ if __name__ == '__main__':
      
     image_root = '{}/data_train.npy'.format(opt.train_path)
     gt_root = '{}/mask_train.npy'.format(opt.train_path)
+    
+    
+    train_set=CHAOS(isTrain=True)
+    train_loader = DataLoader(train_set,
+                          batch_size=opt.batch_size,
+                          num_workers=opt.num_workers,
+                          shuffle=False)
+    
+    test_set=CHAOS(isTrain=False)
+    test_loader = DataLoader(test_set,
+                      batch_size=opt.batch_size,
+                      num_workers=opt.num_workers,
+                      shuffle=False)
 
-    train_loader = get_loader(image_root, gt_root, batchsize=opt.batchsize)
-    total_step = len(train_loader)
+#     train_loader = get_loader(image_root, gt_root, batchsize=opt.batchsize)
+#     total_step = len(train_loader)
 
     print("#"*20, "Start Training", "#"*20)
+    
+    device=opt.device
 
     best_loss = 1e5
     for epoch in range(1, opt.epoch + 1):
-        best_loss = train(train_loader, model, optimizer, epoch, best_loss)
+        best_loss = train(train_loader, model, optimizer, epoch, best_loss, device)
