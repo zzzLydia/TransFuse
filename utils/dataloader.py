@@ -11,8 +11,8 @@ from utils import readlines, pil_loader
 
 
 class CHAOS(data.Dataset):
-    def __init__(self, data_path, istrain):
-        self.datapath = data_path
+    def __init__(self, istrain):
+        #self.datapath = data_path
         self.istrain = istrain
         self.loader = pil_loader
         
@@ -103,7 +103,7 @@ class SkinDataset(data.Dataset):
 
 def get_loader(image_root, gt_root, batchsize, shuffle=True, num_workers=4, pin_memory=True):
 
-    dataset = SkinDataset(image_root, gt_root)
+    dataset = CHAOS(image_root, gt_root)
     data_loader = data.DataLoader(dataset=dataset,
                                   batch_size=batchsize,
                                   shuffle=shuffle,
