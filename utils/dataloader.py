@@ -34,12 +34,16 @@ class CHAOS(data.Dataset):
         
         line = self.filenames[index]
 
-        inputs = {}
-        inputs["InPhase"] = self.get_color(self.datapath, 'in', line)
-        inputs["OutPhase"] = self.get_color(self.datapath, 'out', line)
-        inputs["gt"] = self.get_color(self.datapath, 'gt', line)
+#         inputs = {}
+#         inputs["InPhase"] = self.get_color(self.datapath, 'in', line)
+#         inputs["OutPhase"] = self.get_color(self.datapath, 'out', line)
+#         inputs["gt"] = self.get_color(self.datapath, 'gt', line)
+
+        InPhase = self.get_color(self.datapath, 'in', line)
+        OutPhase = self.get_color(self.datapath, 'out', line)
+        gt = self.get_color(self.datapath, 'gt', line)
                         
-        return inputs
+        return InPhase, OutPhase, gt
     
     
     def __len__(self):
