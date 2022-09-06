@@ -115,9 +115,9 @@ class TransFuse_S(nn.Module):
         if normal_init:
             self.init_weights()
 
-    def forward(self, imgs, labels=None):
+    def forward(self, img1, img2, labels=None):
         # bottom-up path
-        x_b = self.transformer(imgs)
+        x_b = self.transformer(img1)
         x_b = torch.transpose(x_b, 1, 2)
         x_b = x_b.view(x_b.shape[0], -1, 12, 16)
         x_b = self.drop(x_b)
@@ -129,7 +129,7 @@ class TransFuse_S(nn.Module):
         x_b_2 = self.drop(x_b_2)
 
         # top-down path
-        x_u = self.resnet.conv1(imgs)
+        x_u = self.resnet.conv1(img2)
         x_u = self.resnet.bn1(x_u)
         x_u = self.resnet.relu(x_u)
         x_u = self.resnet.maxpool(x_u)
@@ -215,9 +215,9 @@ class TransFuse_L(nn.Module):
         if normal_init:
             self.init_weights()
 
-    def forward(self, imgs, labels=None):
+    def forward(self, img1, img2, labels=None):
         # bottom-up path
-        x_b = self.transformer(imgs)
+        x_b = self.transformer(img1)
         x_b = torch.transpose(x_b, 1, 2)
         x_b = x_b.view(x_b.shape[0], -1, 12, 16)
         x_b = self.drop(x_b)
@@ -230,7 +230,7 @@ class TransFuse_L(nn.Module):
 
 
         # top-down path
-        x_u = self.resnet.conv1(imgs)
+        x_u = self.resnet.conv1(img2)
         x_u = self.resnet.bn1(x_u)
         x_u = self.resnet.relu(x_u)
         x_u = self.resnet.maxpool(x_u)
@@ -319,9 +319,9 @@ class TransFuse_L_384(nn.Module):
         if normal_init:
             self.init_weights()
 
-    def forward(self, imgs, labels=None):
+    def forward(self, img1, img2, labels=None):
         # bottom-up path
-        x_b = self.transformer(imgs)
+        x_b = self.transformer(img1)
         x_b = torch.transpose(x_b, 1, 2)
         x_b = x_b.view(x_b.shape[0], -1, 24, 32)
         x_b = self.drop(x_b)
@@ -334,7 +334,7 @@ class TransFuse_L_384(nn.Module):
 
 
         # top-down path
-        x_u = self.resnet.conv1(imgs)
+        x_u = self.resnet.conv1(img2)
         x_u = self.resnet.bn1(x_u)
         x_u = self.resnet.relu(x_u)
         x_u = self.resnet.maxpool(x_u)
