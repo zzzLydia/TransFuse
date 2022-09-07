@@ -23,6 +23,26 @@ def structure_loss(pred, mask):
     wiou = 1 - (inter + 1)/(union - inter+1)
     return (wbce + wiou).mean()
 
+def getOneHotSegmentation(batch):
+    backgroundVal = 0
+
+    # Chaos MRI (These values are to set label values as 0,1,2,3 and 4)
+    label1 = 0.24705882
+    label2 = 0.49411765
+    label3 = 0.7411765
+    label4 = 0.9882353
+    
+    oneHotLabels = torch.cat((batch == backgroundVal, batch == label1, batch == label2, batch == label3, batch == label4),
+                             dim=1)
+    
+    return oneHotLabels.float()
+
+def predToSegmentation(pred):
+    Max = pred.max(dim=1, keepdim=True)[0]
+    x = pred / Max
+    return (x == 1).float()
+
+
 
 class computeDiceOneHot(nn.Module):
     def __init__(self):
@@ -76,6 +96,11 @@ def train(train_loader, model, optimizer, epoch, best_loss, device):
     model.train()
     loss_record2, loss_record3, loss_record4 = AvgMeter(), AvgMeter(), AvgMeter()
     accum = 0
+    
+    softMax = nn.Softmax()
+    CE_loss = nn.CrossEntropyLoss()
+    Dice_loss = computeDiceOneHot()
+    mseLoss = nn.MSELoss()
 
     for i, pack in enumerate(train_loader, start=1):
         # ---- data prepare ----
@@ -92,6 +117,14 @@ def train(train_loader, model, optimizer, epoch, best_loss, device):
             
         # ---- forward ----
         lateral_map_4, lateral_map_3, lateral_map_2 = model(images)
+        
+        
+        Segmentation_planes = getOneHotSegmentation(Segmentation)# gt
+
+        segmentation_prediction_ones = predToSegmentation(pred_y)# prediction
+        
+        Dice_loss = computeDiceOneHot()
+        #then caculate loss of them
 
         # ---- loss function ----
         loss4 = structure_loss(lateral_map_4, gts)
