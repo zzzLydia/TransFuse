@@ -163,11 +163,46 @@ def train(train_loader, model, optimizer, epoch, best_loss, device):
     return best_loss
 
 
-def test(model, path):
+def test(model, test_loader, path):
 
     model.eval()
     mean_loss = []
+    
+    for i, pack in enumerate(train_loader, start=1):
+        if opt.same_input==True:
+            output1_InPhase, , =model(InPhase, InPhase)
+            output1_OutPhase, , =model(OutPhase, OutPhase)        
+        else:
+            output1_InPhase, , =model(InPhase, OutPhase)
+            output1_OutPhase, , =model(OutPhase, InPhase)     
+        #loss function
+            
+        # ---- forward ----
+        lateral_map_4, lateral_map_3, lateral_map_2 = model(images)
+        
+        
+        Segmentation_planes = getOneHotSegmentation(Segmentation)# gt
 
+        segmentation_prediction_ones = predToSegmentation(pred_y)# prediction
+        
+        Dice_loss = computeDiceOneHot()
+        
+        #other metrics
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
     for s in ['val', 'test']:
         image_root = '{}/data_{}.npy'.format(path, s)
         gt_root = '{}/mask_{}.npy'.format(path, s)
