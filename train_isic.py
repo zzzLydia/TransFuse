@@ -113,15 +113,21 @@ def train(train_loader, model, optimizer, epoch, best_loss, device):
 #         images = Variable(images).cuda()
 #         gts = Variable(gts).cuda()
         if opt.same_input==True:
-            output1_InPhase, , =model(InPhase, InPhase)
-            output1_OutPhase, , =model(OutPhase, OutPhase)        
+            output1_1, output2_1, output3_1=model(InPhase, InPhase)
+            output1_2, output2_2, output3_2=model(OutPhase, OutPhase)        
         else:
-            output1_InPhase, , =model(InPhase, OutPhase)
-            output1_OutPhase, , =model(OutPhase, InPhase)     
+            output1_1, output2_1, output3_1=model(InPhase, OutPhase)
+            output1_2, output2_2, output3_2=model(OutPhase, InPhase)     
         #loss function
-            
+
         # ---- forward ----
-        lateral_map_4, lateral_map_3, lateral_map_2 = model(images)
+        loss4_1 = structure_loss(output1_1, gt)
+        loss3_1 = structure_loss(output2_1, gt)
+        loss2_1 = structure_loss(output3_1, gt)
+        
+        loss4_2 = structure_loss(output1_2, gt)
+        loss3_2 = structure_loss(output2_2, gt)
+        loss2_2 = structure_loss(output3_2, gt)
         
         pred_y = softMax(result)
         
