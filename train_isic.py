@@ -14,10 +14,15 @@ from torch.utils.data import DataLoader
 
 def structure_loss(pred, mask):
     weit = 1 + 5*torch.abs(F.avg_pool2d(mask, kernel_size=31, stride=1, padding=15) - mask)
-    wbce = F.binary_cross_entropy_with_logits(pred, mask, reduction='none')
+    #wbce = F.binary_cross_entropy_with_logits(pred, mask, reduction='none')
+    Segmentation_class = getTargetSegmentation(mask) #gt to 01234
+    wce= nn.CrossEntropyLoss(pred, Segmentation_class)
     wbce = (weit*wbce).sum(dim=(2, 3)) / weit.sum(dim=(2, 3))
+    
+    prediction_onehot=predToSegmentation(softmax(pred))
+    gt_onehot=getOneHotSegmentation(mask)
 
-    pred = torch.sigmoid(pred)
+    #pred = torch.sigmoid(pred)
     inter = ((pred * mask)*weit).sum(dim=(2, 3))
     union = ((pred + mask)*weit).sum(dim=(2, 3))
     wiou = 1 - (inter + 1)/(union - inter+1)
@@ -118,15 +123,28 @@ def train(train_loader, model, optimizer, epoch, best_loss, device):
         # ---- forward ----
         lateral_map_4, lateral_map_3, lateral_map_2 = model(images)
         
+        pred_y = softMax(result)
         
+        #gt: one channel with 5 discrete values to 5 channels onehot
         Segmentation_planes = getOneHotSegmentation(Segmentation)# gt
-
+        # 
+        
+        #pred: 5 channels to 5 channels onehot
         segmentation_prediction_ones = predToSegmentation(pred_y)# prediction
+        
+        #gt: one channel with 5 discrete values to one channel with 01234
+        Segmentation_class = getTargetSegmentation(Segmentation)
+        
+        
         
         Dice_loss = computeDiceOneHot()
         #then caculate loss of them
 
         # ---- loss function ----
+        
+        nn.CrossEntropyLoss()
+        
+        
         loss4 = structure_loss(lateral_map_4, gts)
         loss3 = structure_loss(lateral_map_3, gts)
         loss2 = structure_loss(lateral_map_2, gts)
