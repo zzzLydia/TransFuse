@@ -89,11 +89,65 @@ class computeDiceOneHot(nn.Module):
             DiceW[i, 1] = self.sum(pred[i, 2], GT[i, 2])
             DiceT[i, 1] = self.sum(pred[i, 3], GT[i, 3])
             DiceZ[i, 1] = self.sum(pred[i, 4], GT[i, 4])
+        DiceB = DicesToDice(DicesB)
+        DiceW = DicesToDice(DicesW)
+        DiceT = DicesToDice(DicesT)
+        DiceZ = DicesToDice(DicesZ)
+        
+        Dice_score = (DiceB + DiceW + DiceT+ DiceZ) / 4
 
-        return DiceN, DiceB , DiceW, DiceT, DiceZ
+        return Dice_score
+    
+class computeVSOneHot(nn.Module):
+    def __init__(self):
+        super(computeVSOnwHot, self).__init__()
+
+    def VS(self, input, target):
+        diff = abs(input.sum() + target.sum())
+        summ = input.sum() + target.sum()
+        if (summ == 0).all():
+            return 1 - (diff + 1e-8) / (summ + 1e-8)
+
+        return 1 - diff/summ
+    
+    def diff(self, input, target):
+        return abs(input.sum() + target.sum())
+
+    def summ(self, input, target):
+        return input.sum() + target.sum()
 
 
+    def forward(self, pred, GT):
+        # GT is 4x320x320 of 0 and 1
+        # pred is converted to 0 and 1
+        batchsize = GT.size(0)
+        VSN = to_var(torch.zeros(batchsize, 2))
+        VSB = to_var(torch.zeros(batchsize, 2))
+        VSW = to_var(torch.zeros(batchsize, 2))
+        VST = to_var(torch.zeros(batchsize, 2))
+        VSZ = to_var(torch.zeros(batchsize, 2))
 
+        for i in range(batchsize):
+            VSN[i, 0] = self.inter(pred[i, 0], GT[i, 0])
+            VSB[i, 0] = self.inter(pred[i, 1], GT[i, 1])
+            VSW[i, 0] = self.inter(pred[i, 2], GT[i, 2])
+            VST[i, 0] = self.inter(pred[i, 3], GT[i, 3])
+            VSZ[i, 0] = self.inter(pred[i, 4], GT[i, 4])
+
+            VSN[i, 1] = self.sum(pred[i, 0], GT[i, 0])
+            VSB[i, 1] = self.sum(pred[i, 1], GT[i, 1])
+            VSW[i, 1] = self.sum(pred[i, 2], GT[i, 2])
+            VST[i, 1] = self.sum(pred[i, 3], GT[i, 3])
+            VSZ[i, 1] = self.sum(pred[i, 4], GT[i, 4])
+            
+        VSB = DicesToDice(DicesB)
+        VSW = DicesToDice(DicesW)
+        VST = DicesToDice(DicesT)
+        VSZ = DicesToDice(DicesZ)
+        
+        VS_score = (VSB + VSW + VST+ VSZ) / 4
+
+        return VS_score
 
 
 def train(train_loader, model, optimizer, epoch, best_loss, device):
@@ -112,48 +166,48 @@ def train(train_loader, model, optimizer, epoch, best_loss, device):
         InPhase, OutPhase, gt = pack
 #         images = Variable(images).cuda()
 #         gts = Variable(gts).cuda()
-        if opt.same_input==True:
-            output1_1, output2_1, output3_1=model(InPhase, InPhase)
-            output1_2, output2_2, output3_2=model(OutPhase, OutPhase)        
-        else:
-            output1_1, output2_1, output3_1=model(InPhase, OutPhase)
-            output1_2, output2_2, output3_2=model(OutPhase, InPhase)     
+#         if opt.same_input==True:
+#             output1_1, output2_1, output3_1=model(InPhase, InPhase)
+#             output1_2, output2_2, output3_2=model(OutPhase, OutPhase)        
+#         else:
+        output1_1, output2_1, output3_1=model(InPhase, OutPhase)
+        #output1_2, output2_2, output3_2=model(OutPhase, InPhase)     
         #loss function
 
         # ---- forward ----
-        loss4_1 = structure_loss(output1_1, gt)
-        loss3_1 = structure_loss(output2_1, gt)
-        loss2_1 = structure_loss(output3_1, gt)
+        loss4 = structure_loss(output1_1, gt)
+        loss3 = structure_loss(output2_1, gt)
+        loss2 = structure_loss(output3_1, gt)
         
-        loss4_2 = structure_loss(output1_2, gt)
-        loss3_2 = structure_loss(output2_2, gt)
-        loss2_2 = structure_loss(output3_2, gt)
+#         loss4_2 = structure_loss(output1_2, gt)
+#         loss3_2 = structure_loss(output2_2, gt)
+#         loss2_2 = structure_loss(output3_2, gt)
         
-        pred_y = softMax(result)
+#         pred_y = softMax(result)
         
-        #gt: one channel with 5 discrete values to 5 channels onehot
-        Segmentation_planes = getOneHotSegmentation(Segmentation)# gt
-        # 
+#         #gt: one channel with 5 discrete values to 5 channels onehot
+#         Segmentation_planes = getOneHotSegmentation(Segmentation)# gt
+#         # 
         
-        #pred: 5 channels to 5 channels onehot
-        segmentation_prediction_ones = predToSegmentation(pred_y)# prediction
+#         #pred: 5 channels to 5 channels onehot
+#         segmentation_prediction_ones = predToSegmentation(pred_y)# prediction
         
-        #gt: one channel with 5 discrete values to one channel with 01234
-        Segmentation_class = getTargetSegmentation(Segmentation)
+#         #gt: one channel with 5 discrete values to one channel with 01234
+#         Segmentation_class = getTargetSegmentation(Segmentation)
         
         
         
         Dice_loss = computeDiceOneHot()
-        #then caculate loss of them
+#         #then caculate loss of them
 
-        # ---- loss function ----
+#         # ---- loss function ----
         
-        nn.CrossEntropyLoss()
+#         nn.CrossEntropyLoss()
         
         
-        loss4 = structure_loss(lateral_map_4, gts)
-        loss3 = structure_loss(lateral_map_3, gts)
-        loss2 = structure_loss(lateral_map_2, gts)
+#         loss4 = structure_loss(lateral_map_4, gts)
+#         loss3 = structure_loss(lateral_map_3, gts)
+#         loss2 = structure_loss(lateral_map_2, gts)
 
         loss = 0.5 * loss2 + 0.3 * loss3 + 0.2 * loss4
 
@@ -192,13 +246,8 @@ def test(model, test_loader, path):
     model.eval()
     mean_loss = []
     
-    for i, pack in enumerate(train_loader, start=1):
-        if opt.same_input==True:
-            output1_InPhase, , =model(InPhase, InPhase)
-            output1_OutPhase, , =model(OutPhase, OutPhase)        
-        else:
-            output1_InPhase, , =model(InPhase, OutPhase)
-            output1_OutPhase, , =model(OutPhase, InPhase)     
+    for i, pack in enumerate(test_loader, start=1):
+        output1_1, output2_1, output3_1=model(InPhase, OutPhase)  
         #loss function
             
         # ---- forward ----
