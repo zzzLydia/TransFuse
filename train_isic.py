@@ -163,7 +163,7 @@ class computeVSOneHot(nn.Module):
         return VS_score
 
 
-class surfd(nn.Module):
+class computemsdOneHot(nn.Module):
     def __init__(self):
         super(computeDiceOneHot, self).__init__()
         
@@ -218,15 +218,9 @@ def train(train_loader, model, optimizer, epoch, best_loss, device):
     for i, pack in enumerate(train_loader, start=1):
         # ---- data prepare ----
         InPhase, OutPhase, gt = pack
-#         images = Variable(images).cuda()
-#         gts = Variable(gts).cuda()
-#         if opt.same_input==True:
-#             output1_1, output2_1, output3_1=model(InPhase, InPhase)
-#             output1_2, output2_2, output3_2=model(OutPhase, OutPhase)        
-#         else:
+
         output1_1, output2_1, output3_1=model(InPhase, OutPhase)
-        #output1_2, output2_2, output3_2=model(OutPhase, InPhase)     
-        #loss function
+
 
         # ---- forward ----
         loss4 = structure_loss(output1_1, gt)
@@ -305,7 +299,7 @@ def test(model, test_loader, path):
         #loss function
             
         # ---- forward ----
-        lateral_map_4, lateral_map_3, lateral_map_2 = model(images)
+        #lateral_map_4, lateral_map_3, lateral_map_2 = model(images)
         
         
         Segmentation_planes = getOneHotSegmentation(Segmentation)# gt
@@ -318,53 +312,41 @@ def test(model, test_loader, path):
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-    for s in ['val', 'test']:
-        image_root = '{}/data_{}.npy'.format(path, s)
-        gt_root = '{}/mask_{}.npy'.format(path, s)
-        test_loader = test_dataset(image_root, gt_root)
+#     for s in ['val', 'test']:
+#         image_root = '{}/data_{}.npy'.format(path, s)
+#         gt_root = '{}/mask_{}.npy'.format(path, s)
+#         test_loader = test_dataset(image_root, gt_root)
 
-        dice_bank = []
-        iou_bank = []
-        loss_bank = []
-        acc_bank = []
+    dice_bank = []
+    vs_bank = []
+    loss_bank = []
+    msc_bank = []
 
-        for i in range(test_loader.size):
-            image, gt = test_loader.load_data()
-            image = image.cuda()
+    for i in range(test_loader.size):
+        image, gt = test_loader.load_data()
+        image = image.cuda()
 
-            with torch.no_grad():
-                _, _, res = model(image)
-            loss = structure_loss(res, torch.tensor(gt).unsqueeze(0).unsqueeze(0).cuda())
+        with torch.no_grad():
+            _, _, res = model(image)
+        loss = structure_loss(res, torch.tensor(gt).unsqueeze(0).unsqueeze(0).cuda())
 
-            res = res.sigmoid().data.cpu().numpy().squeeze()
-            gt = 1*(gt>0.5)            
-            res = 1*(res > 0.5)
+        res = res.sigmoid().data.cpu().numpy().squeeze()
+        gt = 1*(gt>0.5)            
+        res = 1*(res > 0.5)
 
-            dice = mean_dice_np(gt, res)
-            iou = mean_iou_np(gt, res)
-            acc = np.sum(res == gt) / (res.shape[0]*res.shape[1])
+        dice = computeDiceOneHot(gt, res)
+        vs = computevsOneHot(gt, res)
+        msd = computemsdOneHot(gt, res)
 
-            loss_bank.append(loss.item())
-            dice_bank.append(dice)
-            iou_bank.append(iou)
-            acc_bank.append(acc)
+        loss_bank.append(loss.item())
+        dice_bank.append(dice)
+        vs_bank.append(vs)
+        msc_bank.append(msc)
             
-        print('{} Loss: {:.4f}, Dice: {:.4f}, IoU: {:.4f}, Acc: {:.4f}'.
-            format(s, np.mean(loss_bank), np.mean(dice_bank), np.mean(iou_bank), np.mean(acc_bank)))
+    print('{} Loss: {:.4f}, Dice: {:.4f}, VS: {:.4f}, MSC: {:.4f}'.
+            format(s, np.mean(loss_bank), np.mean(dice_bank), np.mean(vs_bank), np.mean(msc_bank)))
 
-        mean_loss.append(np.mean(loss_bank))
+    mean_loss.append(np.mean(loss_bank))
 
     return mean_loss[0] 
 
