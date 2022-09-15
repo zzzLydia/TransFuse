@@ -218,6 +218,9 @@ def train(train_loader, model, optimizer, epoch, best_loss, device):
     for i, pack in enumerate(train_loader, start=1):
         # ---- data prepare ----
         InPhase, OutPhase, gt = pack
+        InPhase = InPhase.to(opt.device)
+        OutPhase = OutPhase.to(opt.device)
+        gt = gt.to(opt.device)
 
         output1_1, output2_1, output3_1=model(InPhase, OutPhase)
 
@@ -371,7 +374,7 @@ if __name__ == '__main__':
     opt = parser.parse_args()
 
     # ---- build models ----
-    model = TransFuse_S(pretrained=True).cuda()
+    model = TransFuse_S(pretrained=True).to(opt.device)
     params = model.parameters()
     optimizer = torch.optim.Adam(params, opt.lr, betas=(opt.beta1, opt.beta2))
      
