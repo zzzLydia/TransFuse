@@ -12,6 +12,17 @@ from test_isic import mean_dice_np, mean_iou_np
 import os
 from torch.utils.data import DataLoader
 
+from scipy.ndimage import morphology
+
+def DicesToDice(Dices):
+    sums = Dices.sum(dim=0)
+    return (2 * sums[0] + 1e-8) / (sums[1] + 1e-8)
+
+def VSsToVS(VSs):
+    sums = np.abs(Dices).sum(dim=0)
+    return 1-(2 * sums[0] + 1e-8) / (sums[1] + 1e-8)
+
+
 def structure_loss(pred, mask):
     weit = 1 + 5*torch.abs(F.avg_pool2d(mask, kernel_size=31, stride=1, padding=15) - mask)
     #wbce = F.binary_cross_entropy_with_logits(pred, mask, reduction='none')
@@ -67,6 +78,7 @@ class computeDiceOneHot(nn.Module):
     def sum(self, input, target):
         return input.sum() + target.sum()
 
+
     def forward(self, pred, GT):
         # GT is 4x320x320 of 0 and 1
         # pred is converted to 0 and 1
@@ -89,6 +101,7 @@ class computeDiceOneHot(nn.Module):
             DiceW[i, 1] = self.sum(pred[i, 2], GT[i, 2])
             DiceT[i, 1] = self.sum(pred[i, 3], GT[i, 3])
             DiceZ[i, 1] = self.sum(pred[i, 4], GT[i, 4])
+            
         DiceB = DicesToDice(DicesB)
         DiceW = DicesToDice(DicesW)
         DiceT = DicesToDice(DicesT)
@@ -128,11 +141,11 @@ class computeVSOneHot(nn.Module):
         VSZ = to_var(torch.zeros(batchsize, 2))
 
         for i in range(batchsize):
-            VSN[i, 0] = self.inter(pred[i, 0], GT[i, 0])
-            VSB[i, 0] = self.inter(pred[i, 1], GT[i, 1])
-            VSW[i, 0] = self.inter(pred[i, 2], GT[i, 2])
-            VST[i, 0] = self.inter(pred[i, 3], GT[i, 3])
-            VSZ[i, 0] = self.inter(pred[i, 4], GT[i, 4])
+            VSN[i, 0] = self.diff(pred[i, 0], GT[i, 0])
+            VSB[i, 0] = self.diff(pred[i, 1], GT[i, 1])
+            VSW[i, 0] = self.diff(pred[i, 2], GT[i, 2])
+            VST[i, 0] = self.diff(pred[i, 3], GT[i, 3])
+            VSZ[i, 0] = self.diff(pred[i, 4], GT[i, 4])
 
             VSN[i, 1] = self.sum(pred[i, 0], GT[i, 0])
             VSB[i, 1] = self.sum(pred[i, 1], GT[i, 1])
@@ -140,14 +153,55 @@ class computeVSOneHot(nn.Module):
             VST[i, 1] = self.sum(pred[i, 3], GT[i, 3])
             VSZ[i, 1] = self.sum(pred[i, 4], GT[i, 4])
             
-        VSB = DicesToDice(DicesB)
-        VSW = DicesToDice(DicesW)
-        VST = DicesToDice(DicesT)
-        VSZ = DicesToDice(DicesZ)
+        VSB = VSsToVS(DicesB)
+        VSW = VSsToVS(DicesW)
+        VST = VSsToVS(DicesT)
+        VSZ = VSsToVS(DicesZ)
         
         VS_score = (VSB + VSW + VST+ VSZ) / 4
 
         return VS_score
+
+
+class surfd(nn.Module):
+    def __init__(self):
+        super(computeDiceOneHot, self).__init__()
+        
+    def msd(self, input_1, input_2):
+        input_1 = np.atleast_1d(input1.astype(np.bool))
+        input_2 = np.atleast_1d(input2.astype(np.bool))
+
+
+        kernel = morphology.generate_binary_structure(2, 1)
+
+        edge_1 = input_1 - morphology.binary_erosion(input_1, kernel)
+        edge_2 = input_2 - morphology.binary_erosion(input_2, kernel)
+
+
+        dta = morphology.distance_transform_edt(~edge_1,1)
+        dtb = morphology.distance_transform_edt(~edge_2,1)
+
+        surface_distance = np.concatenate([np.ravel(dta[edge_2!=0]), np.ravel(dtb[edge_1!=0])])
+
+        msd = surface_distance.mean()
+        return msd
+    
+    def forward(self, input_1, input_2):
+        for i in range(batchsize):
+            msdN[i, 0] = self.inter(pred[i, 0], GT[i, 0])
+            msdB[i, 0] = self.inter(pred[i, 1], GT[i, 1])
+            msdW[i, 0] = self.inter(pred[i, 2], GT[i, 2])
+            msdT[i, 0] = self.inter(pred[i, 3], GT[i, 3])
+            msdZ[i, 0] = self.inter(pred[i, 4], GT[i, 4])
+              
+        msdB = msdsTomsd(msdsB)
+        msdW = msdsTomsd(msdsW)
+        msdT = msdsTomsd(msdsT)
+        msdZ = msdsTomsd(msdsZ)
+        
+        msd_score = (msdB + msdW + msdT+ msdZ) / 4
+        
+        return msd_score     
 
 
 def train(train_loader, model, optimizer, epoch, best_loss, device):
